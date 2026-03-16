@@ -50,18 +50,10 @@ const slackBoltModule = SlackBolt as typeof import("@slack/bolt") & {
   default?: typeof import("@slack/bolt");
 };
 // Bun allows named imports from CJS; Node ESM doesn't. Use default+fallback for compatibility.
-// After bundling with tsdown, `import SlackBolt from "@slack/bolt"` may resolve to the
-// module's default export (a function) rather than the module namespace. Walk the chain
-// until we find an object that exposes `App`.
-function resolveSlackBoltNamespace(mod: Record<string, unknown>): Record<string, unknown> {
-  if (typeof mod?.App === "function") return mod;
-  if (typeof (mod?.default as Record<string, unknown>)?.App === "function")
-    return mod.default as Record<string, unknown>;
-  // Last resort: the module itself may be the namespace
-  return mod;
-}
-const slackBolt = resolveSlackBoltNamespace(slackBoltModule as unknown as Record<string, unknown>);
-const { App, HTTPReceiver } = slackBolt as unknown as typeof import("@slack/bolt");
+// Fix: Check if module has App property directly (Node 25.x ESM/CJS compat issue)
+const slackBolt =
+  (slackBoltModule.App ? slackBoltModule : slackBoltModule.default) ?? slackBoltModule;
+const { App, HTTPReceiver } = slackBolt;
 
 const SLACK_WEBHOOK_MAX_BODY_BYTES = 1024 * 1024;
 const SLACK_WEBHOOK_BODY_TIMEOUT_MS = 30_000;
