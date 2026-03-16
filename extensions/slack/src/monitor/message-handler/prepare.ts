@@ -291,7 +291,17 @@ function resolveSlackRoutingContext(params: {
   // Top-level channel messages must stay on the per-channel session for continuity.
   // Before this fix, every channel message used its own ts as threadId, creating
   // isolated sessions per message (regression from #10686).
-  const roomThreadId = isThreadReply && threadTs ? threadTs : undefined;
+  //
+  // However, when replyToMode is "all" in a room context, top-level @mentions
+  // should create per-thread sessions using the message's own ts as the thread ID.
+  // This ensures each @mention gets its own isolated agent session scoped to the
+  // resulting thread, rather than accumulating into a shared channel session.
+  const roomThreadId =
+    isThreadReply && threadTs
+      ? threadTs
+      : replyToMode === "all" && threadContext.messageTs
+        ? threadContext.messageTs
+        : undefined;
   const canonicalThreadId = isRoomish ? roomThreadId : isThreadReply ? threadTs : autoThreadId;
   const threadKeys = resolveThreadSessionKeys({
     baseSessionKey: route.sessionKey,
